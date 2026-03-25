@@ -43,9 +43,9 @@ export const Navbar = () => {
         </Link>
         
         <div className="flex items-center">
-          <Link to="/anunciar" className="nav-item hidden lg:flex items-center gap-2">
+          <Link to="/anunciar" className="nav-item hidden lg:flex items-center gap-2 bg-ink text-paper px-4 py-2 rounded-full hover:bg-ink/80 transition-colors">
             <Plus className="w-4 h-4" />
-            <span>Anunciar</span>
+            <span className="font-semibold">Anunciar meu Imóvel</span>
           </Link>
           <Link to="/perfil" className="nav-item hidden md:flex items-center gap-2">
             {session?.user?.user_metadata?.avatar_url ? (
@@ -79,3 +79,4 @@ export const Navbar = () => {
     </nav>
   );
 };
+
