@@ -1,46 +1,58 @@
 import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe(String(import.meta.env?.VITE_STRIPE_PUBLIC_KEY || ""));
+// Tenta pegar a chave pública da Vercel
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
 
-export const Checkout = () => { // Exportação nomeada para combinar com o seu App.tsx
+export const Checkout = () => { 
   const [loading, setLoading] = useState(false);
 
-  const handlePayment = async () => {
+  const handleCheckout = async () => {
     setLoading(true);
     try {
       const stripe = await stripePromise;
-      const res = await fetch('/api/server', {
+      if (!stripe) throw new Error('Stripe não carregado');
+
+      const response = await fetch('/api/server', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 100 }), 
+        body: JSON.stringify({ amount: 100 }), // Valor de teste
       });
 
-      const session = await res.json();
-      if (session.id && stripe) {
+      const session = await response.json();
+
+      if (session.id) {
         await stripe.redirectToCheckout({ sessionId: session.id });
       } else {
-        alert('Erro: ' + (session.message || 'Sessão não gerada'));
+        alert('Erro ao criar sessão de pagamento.');
       }
     } catch (err) {
-      alert('Erro de conexão com o servidor.');
+      console.error(err);
+      alert('Erro na conexão com o Stripe.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '50px', textAlign: 'center' }}>
+    <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+      <h2 style={{ marginBottom: '20px' }}>Finalizar sua Reserva</h2>
       <button 
-        onClick={handlePayment}
+        onClick={handleCheckout}
         disabled={loading}
-        style={{ padding: '15px 30px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+        style={{ 
+          padding: '12px 24px', 
+          backgroundColor: '#6366f1', 
+          color: 'white', 
+          border: 'none', 
+          borderRadius: '6px',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          fontSize: '16px'
+        }}
       >
-        {loading ? 'Carregando...' : 'Pagar com Stripe'}
+        {loading ? 'Processando...' : 'Pagar Agora com Stripe'}
       </button>
     </div>
   );
 };
-
-
 
