@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
-// No topo do Checkout.tsx
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
+// Certifique-se de que esta chave está nas Environment Variables da Vercel
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 interface CheckoutProps {
   amount: number;
@@ -19,38 +19,26 @@ export const Checkout = ({ amount, bookingId }: CheckoutProps) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Multiplica o valor das noites por 1.15 para incluir a taxa de 15%
+          // Multiplica o valor das noites por 1.15 (15% de taxa)
           amount: amount * 1.15,
           bookingId: bookingId
         }),
       });
 
-     const data = await res.json();
-    const stripe = await stripePromise; // Usa a promessa da linha 4
+      const data = await res.json();
+      const stripe = await stripePromise;
 
-     // Pega o ID da sessão (aceita 'sessionId' ou 'id')
-     const sid = data.sessionId || data.id;
+      // Aceita 'sessionId' ou 'id' vindo do servidor
+      const sessionToUse = data.sessionId || data.id;
 
-     if (stripe && sid) {
-       await stripe.redirectToCheckout({ sessionId: sid });
-     } else {
-       console.error("Erro: Sessão não encontrada", data);
-      setLoading(false);
-   }
-
-}
-
-
-if (stripe && sessionToUse) {
-  await stripe.redirectToCheckout({ sessionId: sessionToUse });
-} else {
-  // Se chegar aqui, a API falhou em criar a sessão
-  console.error("Erro: Sessão não encontrada na resposta da API", data);
-  setLoading(false);
-}
-
+      if (stripe && sessionToUse) {
+        await stripe.redirectToCheckout({ sessionId: sessionToUse });
+      } else {
+        throw new Error("Sessão do Stripe não encontrada.");
+      }
     } catch (error) {
       console.error("Erro no checkout:", error);
+      alert("Erro ao processar pagamento. Verifique o console.");
     } finally {
       setLoading(false);
     }
@@ -60,12 +48,10 @@ if (stripe && sessionToUse) {
     <button 
       onClick={handlePayment} 
       disabled={loading}
-      className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors"
+      className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-all disabled:bg-gray-400"
     >
       {loading ? 'Carregando...' : 'Pagar Agora'}
     </button>
   );
 };
-
-
 
