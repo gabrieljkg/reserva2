@@ -16,7 +16,8 @@ export default async function handler(req: any, res: any) {
         price_data: {
           currency: 'brl',
           product_data: { name: 'Reserva Unplugged Bliss' },
-          unit_amount: 10000, // R$ 100,00 fixo para teste
+          unit_amount: Math.round(req.body.amount * 100), // Pega o valor enviado pelo site
+
         },
         quantity: 1,
       }],
