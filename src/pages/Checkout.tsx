@@ -1,9 +1,8 @@
 import React from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
-// Tenta carregar a chave de dois jeitos para não dar erro
-const stripeKey = (import.meta.env?.VITE_STRIPE_PUBLIC_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) as string;
-const stripePromise = loadStripe(stripeKey);
+// Versão simplificada para evitar erros de tipagem no Build
+const stripePromise = loadStripe(String(import.meta.env.VITE_STRIPE_PUBLIC_KEY || ""));
 
 export default function Checkout() {
   const handleCheckout = async () => {
@@ -12,31 +11,29 @@ export default function Checkout() {
       const response = await fetch('/api/server', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 100 }), // Valor fixo para teste
+        body: JSON.stringify({ amount: 100 }),
       });
 
       const session = await response.json();
-      if (session.id) {
-        await stripe?.redirectToCheckout({ sessionId: session.id });
-      } else {
-        alert('Erro: Servidor não retornou ID da sessão.');
+      if (session.id && stripe) {
+        await stripe.redirectToCheckout({ sessionId: session.id });
       }
     } catch (err) {
       console.error(err);
-      alert('Erro na conexão com o servidor de pagamento.');
+      alert('Erro ao processar. Verifique o console.');
     }
   };
 
   return (
-    <div style={{ padding: '50px', textAlign: 'center' }}>
-      <h1>Finalizar Reserva</h1>
+    <div style={{ padding: '20px', textAlign: 'center' }}>
       <button 
         onClick={handleCheckout}
-        style={{ padding: '10px 20px', backgroundColor: '#6366f1', color: 'white', borderRadius: '5px', cursor: 'pointer' }}
+        style={{ padding: '10px', background: 'blue', color: 'white', border: 'none', borderRadius: '5px' }}
       >
-        Pagar Agora com Stripe
+        Pagar Agora
       </button>
     </div>
   );
 }
+
 
