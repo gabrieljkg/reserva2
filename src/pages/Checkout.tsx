@@ -1,57 +1,47 @@
-import { useState } from 'react';
+
 import { loadStripe } from '@stripe/stripe-js';
 
-// Certifique-se de que esta chave está nas Environment Variables da Vercel
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+// Verifique se o nome na Vercel é exatamente VITE_STRIPE_PUBLISHABLE_KEY
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-interface CheckoutProps {
-  amount: number;
-  bookingId: string;
-}
-
-export const Checkout = ({ amount, bookingId }: CheckoutProps) => {
-  const [loading, setLoading] = useState(false);
-
+const Checkout = () => {
   const handlePayment = async () => {
-    setLoading(true);
     try {
-      const res = await fetch('/api/server', {
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error("Stripe não carregado. Verifique sua VITE_STRIPE_PUBLISHABLE_KEY na Vercel.");
+
+      // Aqui vai sua chamada para o backend (ajuste a URL se necessário)
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // Multiplica o valor das noites por 1.15 (15% de taxa)
-          amount: amount * 1.15,
-          bookingId: bookingId
-        }),
       });
 
-      const data = await res.json();
-      const stripe = await stripePromise;
+      const session = await response.json();
 
-      // Aceita 'sessionId' ou 'id' vindo do servidor
-      const sessionToUse = data.sessionId || data.id;
+      if (session.error) {
+        console.error("Erro do servidor:", session.error);
+        alert("Erro no servidor: " + session.error);
+        return;
+      }
 
-      if (stripe && sessionToUse) {
-        await stripe.redirectToCheckout({ sessionId: sessionToUse });
-      } else {
-        throw new Error("Sessão do Stripe não encontrada.");
+      const result = await stripe.redirectToCheckout({
+        sessionId: session.id,
+      });
+
+      if (result.error) {
+        alert(result.error.message);
       }
     } catch (error) {
-      console.error("Erro no checkout:", error);
-      alert("Erro ao processar pagamento. Verifique o console.");
-    } finally {
-      setLoading(false);
+      console.error("Erro completo:", error);
+      alert("Erro ao processar pagamento. Verifique o console (F12) para detalhes técnicos.");
     }
   };
 
   return (
-    <button 
-      onClick={handlePayment} 
-      disabled={loading}
-      className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-all disabled:bg-gray-400"
-    >
-      {loading ? 'Carregando...' : 'Pagar Agora'}
-    </button>
+    <div>
+      <button onClick={handlePayment}>Pagar Agora</button>
+    </div>
   );
 };
 
+export default Checkout;
