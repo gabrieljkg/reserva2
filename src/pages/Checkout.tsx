@@ -24,12 +24,20 @@ export const Checkout = ({ amount, bookingId }: CheckoutProps) => {
         }),
       });
 
-     // Copie e cole este bloco no lugar das linhas 27 a 32
 const data = await res.json();
-const stripe = await stripePromise;
+const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// Pega 'sessionId' ou 'id', o que vier primeiro
-const sessionToUse = data.sessionId || data.id;
+// Pega 'sessionId' ou 'id' ou 'session' - o que vier da sua API
+const sid = data.sessionId || data.id || data.session?.id;
+
+if (stripe && sid) {
+  await stripe.redirectToCheckout({ sessionId: sid });
+} else {
+  console.error("Erro: ID da sessão não recebido. Resposta da API:", data);
+  alert("Erro ao iniciar pagamento. Verifique as chaves do Stripe na Vercel.");
+  setLoading(false);
+}
+
 
 if (stripe && sessionToUse) {
   await stripe.redirectToCheckout({ sessionId: sessionToUse });
