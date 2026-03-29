@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+// No topo do Checkout.tsx
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface CheckoutProps {
   amount: number;
@@ -24,18 +25,19 @@ export const Checkout = ({ amount, bookingId }: CheckoutProps) => {
         }),
       });
 
-const data = await res.json();
-const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+     const data = await res.json();
+    const stripe = await stripePromise; // Usa a promessa da linha 4
 
-// Pega 'sessionId' ou 'id' ou 'session' - o que vier da sua API
-const sid = data.sessionId || data.id || data.session?.id;
+     // Pega o ID da sessão (aceita 'sessionId' ou 'id')
+     const sid = data.sessionId || data.id;
 
-if (stripe && sid) {
-  await stripe.redirectToCheckout({ sessionId: sid });
-} else {
-  console.error("Erro: ID da sessão não recebido. Resposta da API:", data);
-  alert("Erro ao iniciar pagamento. Verifique as chaves do Stripe na Vercel.");
-  setLoading(false);
+     if (stripe && sid) {
+       await stripe.redirectToCheckout({ sessionId: sid });
+     } else {
+       console.error("Erro: Sessão não encontrada", data);
+      setLoading(false);
+   }
+
 }
 
 
