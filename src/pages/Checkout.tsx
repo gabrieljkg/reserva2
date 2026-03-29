@@ -5,7 +5,8 @@ import { loadStripe } from '@stripe/stripe-js';
 const stripePromise = loadStripe(String(import.meta.env?.VITE_STRIPE_PUBLIC_KEY || ""));
 
 // Adicionamos valores padrão (450) para evitar que o botão trave em "Carregando"
-export const Checkout = ({ amount = 450, bookingId = "reserva-teste" }: { amount?: number, bookingId?: string }) => { 
+export const Checkout = ({ amount, bookingId }: { amount: number, bookingId: string }) => {
+(Isso obriga o componente a usar o valor que vem da reserva, sem "chutar" 450).
   const [loading, setLoading] = useState(false);
 
   const handlePayment = async () => {
@@ -17,10 +18,11 @@ export const Checkout = ({ amount = 450, bookingId = "reserva-teste" }: { amount
       const res = await fetch('/api/server', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          amount: amount, // Envia o valor (Ex: 450)
-          bookingId: bookingId 
-        }), 
+    body: JSON.stringify({
+   amount: amount * 1.15, // Multiplica o valor das noites por 1.15 (15% de taxa)
+  bookingId: bookingId
+     }),
+
       });
 
       const session = await res.json();
