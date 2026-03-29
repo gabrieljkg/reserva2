@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
-// Tenta pegar a chave da Vercel (Vite ou Next)
-const stripePromise = loadStripe(String(import.meta.env?.VITE_STRIPE_PUBLIC_KEY || ""));
+// Carrega a chave pública
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
 
-export const Checkout = () => { 
-  const [loading, setLoading] = useState(false);
-
-  const handleCheckout = async () => {
-    setLoading(true);
+// ATENÇÃO: O nome tem que ser EXATAMENTE 'Checkout' com 'export const'
+export const Checkout = () => {
+  const handlePayment = async () => {
     try {
       const stripe = await stripePromise;
       const res = await fetch('/api/server', {
@@ -16,30 +15,23 @@ export const Checkout = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: 100 }), 
       });
-
       const session = await res.json();
       if (session.id && stripe) {
         await stripe.redirectToCheckout({ sessionId: session.id });
-      } else {
-        alert('Erro ao gerar pagamento: ' + (session.message || 'Sessão inválida'));
       }
     } catch (err) {
-      alert('Erro na conexão com o servidor.');
-    } finally {
-      setLoading(false);
+      alert('Erro ao processar pagamento.');
     }
   };
 
   return (
     <div style={{ padding: '50px', textAlign: 'center' }}>
       <button 
-        onClick={handleCheckout}
-        disabled={loading}
+        onClick={handlePayment}
         style={{ padding: '15px 30px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
       >
-        {loading ? 'Carregando...' : 'Pagar com Stripe'}
+        Pagar com Stripe
       </button>
     </div>
   );
 };
-
