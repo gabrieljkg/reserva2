@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SURVIVAL_KITS } from '../data/mockData';
@@ -19,8 +19,6 @@ export const Checkout = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [qrCode, setQrCode] = useState<{ qr_code: string, qr_code_base64: string } | null>(null);
-  const [ticketUrl, setTicketUrl] = useState<string | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
   // Form states
@@ -33,6 +31,10 @@ export const Checkout = () => {
     cvv: '', 
     cpf: '' 
   });
+
+  useEffect(() => {
+    document.title = "Checkout - AlugaAki";
+  }, []);
 
   if (!bookingData) {
     return (
@@ -79,15 +81,15 @@ export const Checkout = () => {
         throw new Error('As datas selecionadas acabaram de ser reservadas. Por favor, escolha outro período.');
       }
 
-      // 2. Create Mercado Pago preference (or payment) and booking in backend
-      const response = await fetch('/api/create-preference', {
+      // 2. Create Stripe checkout session and booking in backend
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           totalAmount: total,
-          paymentMethodId: paymentMethod === 'boleto' ? 'bolbradesco' : paymentMethod,
+          paymentMethodId: paymentMethod,
           payer: {
             name: formData.name,
             email: formData.email,
@@ -118,30 +120,15 @@ export const Checkout = () => {
       }
 
       const data = await response.json();
-      console.log('Payment/Preference created successfully:', data);
+      console.log('Stripe Session created successfully:', data);
       
-      if (paymentMethod === 'pix' || paymentMethod === 'boleto') {
-        if (paymentMethod === 'pix') {
-          setQrCode({ qr_code: data.qr_code, qr_code_base64: data.qr_code_base64 });
-        } else if (paymentMethod === 'boleto') {
-          setTicketUrl(data.ticket_url);
-        }
-        // Do not clear cart here so the UI can render the QR code / Boleto link
+      if (data.url) {
+        setPaymentUrl(data.url);
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+        clearCart();
       } else {
-        if (data.init_point) {
-          setPaymentUrl(data.init_point);
-          // Try to open in a new tab first (better for iframes)
-          const win = window.open(data.init_point, '_blank');
-          
-          if (!win) {
-            // If popup is blocked, try to redirect the current frame
-            window.location.href = data.init_point;
-          }
-          
-          clearCart();
-        } else {
-          throw new Error('Link de pagamento não recebido do servidor.');
-        }
+        throw new Error('Link de pagamento não recebido do servidor.');
       }
     } catch (err: any) {
       console.error('Checkout error:', err);
@@ -217,36 +204,36 @@ export const Checkout = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <button 
                   type="button"
-                  disabled={isProcessing || !!qrCode || !!ticketUrl}
+                  disabled={isProcessing}
                   onClick={() => setPaymentMethod('credit')}
-                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'credit' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${(isProcessing || qrCode || ticketUrl) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'credit' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <CreditCard className="w-6 h-6" />
                   <span className="text-[9px] uppercase tracking-widest">Crédito</span>
                 </button>
                 <button 
                   type="button"
-                  disabled={isProcessing || !!qrCode || !!ticketUrl}
+                  disabled={isProcessing}
                   onClick={() => setPaymentMethod('debit')}
-                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'debit' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${(isProcessing || qrCode || ticketUrl) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'debit' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <CreditCard className="w-6 h-6" />
                   <span className="text-[9px] uppercase tracking-widest">Débito</span>
                 </button>
                 <button 
                   type="button"
-                  disabled={isProcessing || !!qrCode || !!ticketUrl}
+                  disabled={isProcessing}
                   onClick={() => setPaymentMethod('pix')}
-                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'pix' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${(isProcessing || qrCode || ticketUrl) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'pix' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <QrCode className="w-6 h-6" />
                   <span className="text-[9px] uppercase tracking-widest">Pix</span>
                 </button>
                 <button 
                   type="button"
-                  disabled={isProcessing || !!qrCode || !!ticketUrl}
+                  disabled={isProcessing}
                   onClick={() => setPaymentMethod('boleto')}
-                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'boleto' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${(isProcessing || qrCode || ticketUrl) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`p-4 border flex flex-col items-center gap-3 transition-all ${paymentMethod === 'boleto' ? 'border-ink bg-ink/5' : 'border-ink/10 hover:border-ink/30'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Receipt className="w-6 h-6" />
                   <span className="text-[9px] uppercase tracking-widest">Boleto</span>
@@ -256,70 +243,8 @@ export const Checkout = () => {
               {isProcessing ? (
                 <div className="py-24 text-center space-y-6 border border-ink/10 bg-ink/5">
                   <div className="w-8 h-8 border-2 border-ink border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-[10px] uppercase tracking-widest opacity-60">Processando seu pagamento...</p>
+                  <p className="text-[10px] uppercase tracking-widest opacity-60">Redirecionando para pagamento seguro...</p>
                 </div>
-              ) : qrCode || ticketUrl ? (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-10 border border-ink/10 bg-ink/5 text-center space-y-8">
-                  {paymentMethod === 'pix' && qrCode && (
-                    <>
-                      <h3 className="text-2xl font-serif">Pagamento via Pix</h3>
-                      <div className="bg-white p-4 inline-block mx-auto border border-ink/10">
-                        <img 
-                          src={`data:image/png;base64,${qrCode.qr_code_base64}`} 
-                          alt="QR Code Pix" 
-                          className="w-64 h-64"
-                        />
-                      </div>
-                      <div className="space-y-4">
-                        <p className="text-xs opacity-60">Escaneie o QR Code acima ou copie o código abaixo.</p>
-                        <div className="flex gap-2">
-                          <input 
-                            readOnly 
-                            value={qrCode.qr_code} 
-                            className="flex-1 bg-white border border-ink/10 p-3 text-[10px] font-mono outline-none"
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(qrCode.qr_code);
-                              alert('Código copiado!');
-                            }}
-                            className="bg-ink text-paper px-4 text-[10px] uppercase tracking-widest"
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {paymentMethod === 'boleto' && ticketUrl && (
-                    <>
-                      <h3 className="text-2xl font-serif">Pagamento via Boleto</h3>
-                      <div className="w-20 h-20 bg-ink/10 rounded-full flex items-center justify-center mx-auto">
-                        <Receipt className="w-10 h-10 opacity-60" />
-                      </div>
-                      <p className="text-sm opacity-80">Seu boleto foi gerado com sucesso.</p>
-                      <a 
-                        href={ticketUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="block w-full py-4 border border-ink text-[10px] uppercase tracking-widest hover:bg-ink hover:text-paper transition-all"
-                      >
-                        Visualizar / Imprimir Boleto
-                      </a>
-                    </>
-                  )}
-
-                  <div className="pt-8 mt-8 border-t border-ink/10">
-                    <Link 
-                      to="/sucesso?status=pending"
-                      className="text-[10px] uppercase tracking-widest border-b border-ink pb-1"
-                    >
-                      Já realizei o pagamento
-                    </Link>
-                  </div>
-                </motion.div>
               ) : (
                 <form id="checkout-form" onSubmit={handleCheckout} className="space-y-8">
                   {/* Dados do Hóspede */}
@@ -354,40 +279,13 @@ export const Checkout = () => {
                   <div>
                     <h2 className="text-[11px] uppercase tracking-[0.3em] opacity-50 mb-8">Dados de Pagamento</h2>
                     
-                    {(paymentMethod === 'credit' || paymentMethod === 'debit') && (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        <div>
-                          <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Nome no Cartão</label>
-                          <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-ink/5 border-none p-4 text-sm focus:ring-1 focus:ring-ink outline-none" placeholder="Como impresso no cartão" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Número do Cartão</label>
-                          <input required type="text" maxLength={19} value={formData.number} onChange={e => setFormData({...formData, number: e.target.value})} className="w-full bg-ink/5 border-none p-4 text-sm focus:ring-1 focus:ring-ink outline-none" placeholder="0000 0000 0000 0000" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
-                          <div>
-                            <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Validade</label>
-                            <input required type="text" maxLength={5} value={formData.expiry} onChange={e => setFormData({...formData, expiry: e.target.value})} className="w-full bg-ink/5 border-none p-4 text-sm focus:ring-1 focus:ring-ink outline-none" placeholder="MM/AA" />
-                          </div>
-                          <div>
-                            <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">CVV</label>
-                            <input required type="text" maxLength={4} value={formData.cvv} onChange={e => setFormData({...formData, cvv: e.target.value})} className="w-full bg-ink/5 border-none p-4 text-sm focus:ring-1 focus:ring-ink outline-none" placeholder="123" />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {(paymentMethod === 'pix' || paymentMethod === 'boleto') && (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        <div className="p-6 bg-ink/5 border border-ink/10 text-center">
-                          <p className="text-xs opacity-70">
-                            {paymentMethod === 'pix' 
-                              ? 'O QR Code do Pix será gerado após a confirmação.' 
-                              : 'O Boleto será gerado e enviado para o seu e-mail após a confirmação.'}
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                      <div className="p-6 bg-ink/5 border border-ink/10 text-center">
+                        <p className="text-xs opacity-70">
+                          Você será redirecionado para o ambiente seguro do Stripe para finalizar o pagamento.
+                        </p>
+                      </div>
+                    </motion.div>
                   </div>
                 </form>
               )}
@@ -416,24 +314,14 @@ export const Checkout = () => {
                 </div>
               </div>
               
-              {qrCode || ticketUrl ? (
-                <button 
-                  type="button"
-                  onClick={() => navigate('/perfil')}
-                  className="w-full py-5 bg-paper text-ink text-[11px] uppercase tracking-[0.3em] hover:opacity-90 transition-all mb-6"
-                >
-                  Ir para Meus Pedidos
-                </button>
-              ) : (
-                <button 
-                  type="submit"
-                  form="checkout-form"
-                  disabled={isProcessing}
-                  className="w-full py-5 bg-paper text-ink text-[11px] uppercase tracking-[0.3em] hover:opacity-90 transition-all mb-6 disabled:opacity-50"
-                >
-                  {isProcessing ? 'Processando...' : 'Concluir Reserva'}
-                </button>
-              )}
+              <button 
+                type="submit"
+                form="checkout-form"
+                disabled={isProcessing}
+                className="w-full py-5 bg-paper text-ink text-[11px] uppercase tracking-[0.3em] hover:opacity-90 transition-all mb-6 disabled:opacity-50"
+              >
+                {isProcessing ? 'Processando...' : 'Concluir Reserva'}
+              </button>
 
               {paymentUrl && !isProcessing && (
                 <div className="mb-6 p-4 bg-white/10 border border-white/20 text-center">
