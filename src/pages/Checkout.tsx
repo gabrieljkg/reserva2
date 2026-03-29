@@ -1,54 +1,42 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
-// Use a sua chave pública que você configurou na Vercel
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+// Tenta carregar a chave de dois jeitos para não dar erro
+const stripeKey = (import.meta.env?.VITE_STRIPE_PUBLIC_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) as string;
+const stripePromise = loadStripe(stripeKey);
 
 export default function Checkout() {
-  const [isProcessing, setIsProcessing] = useState(false);
-
   const handleCheckout = async () => {
-    setIsProcessing(true);
     try {
       const stripe = await stripePromise;
-      
-      // AQUI ESTÁ A LINHA QUE ESTAVA ERRADA:
       const response = await fetch('/api/server', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: 100, // Valor de teste
-          bookingId: 'reserva-123'
-        }),
+        body: JSON.stringify({ amount: 100 }), // Valor fixo para teste
       });
 
       const session = await response.json();
-
       if (session.id) {
         await stripe?.redirectToCheckout({ sessionId: session.id });
       } else {
-        throw new Error('Falha ao criar sessão do Stripe');
+        alert('Erro: Servidor não retornou ID da sessão.');
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao processar pagamento. Verifique os logs.');
-    } finally {
-      setIsProcessing(false);
+      alert('Erro na conexão com o servidor de pagamento.');
     }
   };
 
   return (
-    <div className="p-8 text-center">
-      <h1 className="text-2xl font-bold mb-4">Finalizar Reserva</h1>
+    <div style={{ padding: '50px', textAlign: 'center' }}>
+      <h1>Finalizar Reserva</h1>
       <button 
         onClick={handleCheckout}
-        disabled={isProcessing}
-        className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+        style={{ padding: '10px 20px', backgroundColor: '#6366f1', color: 'white', borderRadius: '5px', cursor: 'pointer' }}
       >
-        {isProcessing ? 'Processando...' : 'Pagar com Stripe (Pix/Cartão)'}
+        Pagar Agora com Stripe
       </button>
     </div>
   );
 }
-
 
