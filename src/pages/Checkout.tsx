@@ -1,47 +1,36 @@
 
 import { loadStripe } from '@stripe/stripe-js';
+import React from 'react';
 
-// Verifique se o nome na Vercel é exatamente VITE_STRIPE_PUBLISHABLE_KEY
+// Esta é a chave que configuramos na Vercel
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const Checkout = () => {
-  const handlePayment = async () => {
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error("Stripe não carregado. Verifique sua VITE_STRIPE_PUBLISHABLE_KEY na Vercel.");
+const Checkout: React.FC = () => {
+  const handleCheckout = async () => {
+    const stripe = await stripePromise;
 
-      // Aqui vai sua chamada para o backend (ajuste a URL se necessário)
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const session = await response.json();
-
-      if (session.error) {
-        console.error("Erro do servidor:", session.error);
-        alert("Erro no servidor: " + session.error);
-        return;
-      }
-
-      const result = await stripe.redirectToCheckout({
-        sessionId: session.id,
-      });
-
-      if (result.error) {
-        alert(result.error.message);
-      }
-    } catch (error) {
-      console.error("Erro completo:", error);
-      alert("Erro ao processar pagamento. Verifique o console (F12) para detalhes técnicos.");
+    if (!stripe) {
+      alert("Erro ao carregar o Stripe. Verifique as chaves na Vercel.");
+      return;
     }
+
+    // Aqui você chama seu backend para criar a sessão
+    // Se ainda não tiver o backend pronto, o Stripe dará erro aqui
+    console.log("Iniciando checkout...");
   };
 
   return (
-    <div>
-      <button onClick={handlePayment}>Pagar Agora</button>
+    <div style={{ padding: '20px', textAlign: 'center' }}>
+      <h1>Finalizar Reserva</h1>
+      <button 
+        onClick={handleCheckout}
+        style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+      >
+        Pagar com Stripe
+      </button>
     </div>
   );
 };
 
 export default Checkout;
+
