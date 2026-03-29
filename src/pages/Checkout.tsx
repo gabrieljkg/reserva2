@@ -24,12 +24,21 @@ export const Checkout = ({ amount, bookingId }: CheckoutProps) => {
         }),
       });
 
-      const { sessionId } = await res.json();
-      const stripe = await stripePromise;
+     // Copie e cole este bloco no lugar das linhas 27 a 32
+const data = await res.json();
+const stripe = await stripePromise;
 
-      if (stripe) {
-        await stripe.redirectToCheckout({ sessionId });
-      }
+// Pega 'sessionId' ou 'id', o que vier primeiro
+const sessionToUse = data.sessionId || data.id;
+
+if (stripe && sessionToUse) {
+  await stripe.redirectToCheckout({ sessionId: sessionToUse });
+} else {
+  // Se chegar aqui, a API falhou em criar a sessão
+  console.error("Erro: Sessão não encontrada na resposta da API", data);
+  setLoading(false);
+}
+
     } catch (error) {
       console.error("Erro no checkout:", error);
     } finally {
